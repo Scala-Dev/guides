@@ -53,6 +53,7 @@ export interface GuideOptions extends GuidesOptions {
  * @extends Guides.GuidesOptions
  */
 export interface GuidesProps extends GuidesOptions {
+    guidesColor: string;
     onChangeGuides?: (e: OnChangeGuides) => any;
     onDragStart?: (e: OnDragStart) => any;
     onDrag?: (e: OnDrag) => any;
