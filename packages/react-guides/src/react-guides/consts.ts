@@ -40,7 +40,7 @@ canvas {
     display: none;
     left: 20px;
     top: -20px;
-    color: #f33;
+    color: #8f8f8f;
 }
 :host.horizontal .guides {
     width: 100%;
@@ -54,7 +54,6 @@ canvas {
 }
 .guide {
     position: absolute;
-    background: #f33;
     z-index: 2;
 }
 .guide.dragging:before {
@@ -67,11 +66,13 @@ canvas {
     transform: translate(-50%, -50%);
 }
 :host.horizontal .guide {
+    border-top: 1px dashed #8f8f8f;
     width: 100%;
     height: 1px;
     cursor: row-resize;
 }
 :host.vertical .guide {
+    border-left: 1px dashed #8f8f8f;
     width: 1px;
     height: 100%;
     cursor: col-resize;
