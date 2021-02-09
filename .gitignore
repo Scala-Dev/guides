@@ -2,9 +2,10 @@ node_modules/
 *.DS_Store
 .DS_Store
 doc/
-dist/
-demo/dist/
-packages/*/dist/
+packages/ngx-guides/dist
+packages/preact-guides/dist
+packages/react-compat-guides/dist
+# packages/*/dist/
 release/
 npm-debug.log*
 coverage/
