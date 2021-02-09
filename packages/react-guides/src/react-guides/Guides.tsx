@@ -26,21 +26,21 @@ export default class Guides
     implements GuidesInterface {
     public static defaultProps: GuidesProps = {
         className: "",
-        guidesColor: "#800080",
-        type: "horizontal",
-        zoom: 1,
-        style: { width: "100%", height: "100%" },
-        snapThreshold: 5,
-        snaps: [],
+        defaultGuides: [],
         digit: 0,
-        onChangeGuides: () => {},
-        onDragStart: () => {},
-        onDrag: () => {},
-        onDragEnd: () => {},
         displayDragPos: false,
         dragPosFormat: (v) => v,
-        defaultGuides: [],
+        guidesColor: "#8f8f8f",
+        onChangeGuides: () => {},
+        onDrag: () => {},
+        onDragEnd: () => {},
+        onDragStart: () => {},
         showGuides: true,
+        snaps: [],
+        snapThreshold: 5,
+        style: { width: "100%", height: "100%" },
+        type: "horizontal",
+        zoom: 1,
     };
     public state: GuidesState = {
         guides: [],
@@ -58,12 +58,12 @@ export default class Guides
     public render() {
         const {
             className,
+            cspNonce,
+            displayDragPos,
+            rulerStyle,
+            style,
             type,
             zoom,
-            style,
-            rulerStyle,
-            displayDragPos,
-            cspNonce,
         } = this.props as Required<GuidesProps>;
         const props = this.props;
         const translateName = this.getTranslateName();
@@ -119,7 +119,7 @@ export default class Guides
         );
     }
     public renderGuides({ guideColor }: { [key: string]: React.CSSProperties }) {
-        const { type, zoom, showGuides } = this.props as Required<GuidesProps>;
+        const { showGuides, type, zoom } = this.props as Required<GuidesProps>;
         const translateName = this.getTranslateName();
         const guides = this.state.guides;
         this.guideElements = [];

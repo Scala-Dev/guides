@@ -66,13 +66,11 @@ canvas {
     transform: translate(-50%, -50%);
 }
 :host.horizontal .guide {
-    border-top: 1px dashed #8f8f8f;
     width: 100%;
     height: 1px;
     cursor: row-resize;
 }
 :host.vertical .guide {
-    border-left: 1px dashed #8f8f8f;
     width: 1px;
     height: 100%;
     cursor: col-resize;
