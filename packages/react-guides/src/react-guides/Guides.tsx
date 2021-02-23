@@ -121,7 +121,7 @@ export default class Guides
     public renderGuides({ guideColor }: { [key: string]: React.CSSProperties }) {
         const { showGuides, type, zoom } = this.props as Required<GuidesProps>;
         const translateName = this.getTranslateName();
-        const guides = this.state.guides;
+        const guides = [...this.state.guides];
         this.guideElements = [];
         if (showGuides) {
             return guides.map((pos, i) => {
@@ -198,7 +198,7 @@ export default class Guides
      */
     public loadGuides(guides: number[]) {
         this.setState({
-            guides,
+            guides: [...guides],
         });
     }
     /**
@@ -207,7 +207,7 @@ export default class Guides
      * @instance
      */
     public getGuides(): number[] {
-        return this.state.guides;
+        return [...this.state.guides];
     }
     /**
      * Scroll the positions of the guidelines opposite the ruler.
@@ -223,7 +223,7 @@ export default class Guides
             -pos * zoom
         }px)`;
 
-        const guides = this.state.guides;
+        const guides = [...this.state.guides];
         this.guideElements.forEach((el, i) => {
             if (!el) {
                 return;
@@ -285,7 +285,7 @@ export default class Guides
     private onDragEnd = (e: OnDragEnd) => {
         const { datas, isDouble, distX, distY } = e;
         const pos = this.movePos(e);
-        const guides = this.state.guides;
+        const guides = [...this.state.guides];
         const { onChangeGuides, zoom, displayDragPos, digit } = this.props;
         const guidePos = parseFloat((pos / zoom!).toFixed(digit || 0));
 
@@ -317,7 +317,7 @@ export default class Guides
                     },
                     () => {
                         onChangeGuides!({
-                            guides: this.state.guides,
+                            guides: [...this.state.guides],
                             distX,
                             distY,
                         });
@@ -339,7 +339,7 @@ export default class Guides
                     guides: [...guides],
                 },
                 () => {
-                    const nextGuides = this.state.guides;
+                    const nextGuides = [...this.state.guides];
                     onChangeGuides!({
                         distX,
                         distY,

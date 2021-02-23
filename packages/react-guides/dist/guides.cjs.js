@@ -1,10 +1,10 @@
 /*
 Copyright (c) 2019 Daybrush
-name: @scena/react-guides
+name: @scala-universal/react-guides
 license: MIT
 author: Daybrush
 repository: https://github.com/daybrush/guides/blob/master/packages/react-guides
-version: 0.12.0
+version: 0.12.1
 */
 'use strict';
 
@@ -151,7 +151,8 @@ function (_super) {
 
       var pos = _this.movePos(e);
 
-      var guides = _this.state.guides;
+      var guides = _this.state.guides.slice();
+
       var _a = _this.props,
           onChangeGuides = _a.onChangeGuides,
           zoom = _a.zoom,
@@ -188,7 +189,7 @@ function (_super) {
             guides: guides.concat([guidePos])
           }, function () {
             onChangeGuides({
-              guides: _this.state.guides,
+              guides: _this.state.guides.slice(),
               distX: distX,
               distY: distY
             });
@@ -208,7 +209,8 @@ function (_super) {
         _this.setState({
           guides: guides.slice()
         }, function () {
-          var nextGuides = _this.state.guides;
+          var nextGuides = _this.state.guides.slice();
+
           onChangeGuides({
             distX: distX,
             distY: distY,
@@ -288,7 +290,7 @@ function (_super) {
         type = _b.type,
         zoom = _b.zoom;
     var translateName = this.getTranslateName();
-    var guides = this.state.guides;
+    var guides = this.state.guides.slice();
     this.guideElements = [];
 
     if (showGuides) {
@@ -370,7 +372,7 @@ function (_super) {
 
   __proto.loadGuides = function (guides) {
     this.setState({
-      guides: guides
+      guides: guides.slice()
     });
   };
   /**
@@ -381,7 +383,7 @@ function (_super) {
 
 
   __proto.getGuides = function () {
-    return this.state.guides;
+    return this.state.guides.slice();
   };
   /**
    * Scroll the positions of the guidelines opposite the ruler.
@@ -395,7 +397,7 @@ function (_super) {
     var guidesElement = this.guidesElement;
     this.scrollPos = pos;
     guidesElement.style.transform = this.getTranslateName() + "(" + -pos * zoom + "px)";
-    var guides = this.state.guides;
+    var guides = this.state.guides.slice();
     this.guideElements.forEach(function (el, i) {
       if (!el) {
         return;
