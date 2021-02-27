@@ -1,8 +1,5 @@
-import * as React from "react";
-import Ruler, {
-    PROPERTIES as RULER_PROPERTIES,
-    RulerProps,
-} from "@scena/react-ruler";
+    import * as React from "react";
+import Ruler, { PROPERTIES as RULER_PROPERTIES, RulerProps } from "@scena/react-ruler";
 import { ref, refs } from "framework-utils";
 import Gesto, { OnDragEnd } from "gesto";
 import styled, { StyledElement } from "react-css-styled";
@@ -29,12 +26,9 @@ export default class Guides
         defaultGuides: [],
         digit: 0,
         displayDragPos: false,
-        dragPosFormat: (v) => v,
         guidesColor: "#8f8f8f",
-        onChangeGuides: () => {},
-        onDrag: () => {},
-        onDragEnd: () => {},
-        onDragStart: () => {},
+        dragPosFormat: v => v,
+        lockGuides: false,
         showGuides: true,
         snaps: [],
         snapThreshold: 5,
@@ -125,19 +119,15 @@ export default class Guides
         this.guideElements = [];
         if (showGuides) {
             return guides.map((pos, i) => {
-                return (
-                    <div
-                        className={prefix("guide", type)}
-                        ref={refs(this, "guideElements", i)}
-                        key={i}
-                        data-index={i}
-                        data-pos={pos}
-                        style={{
-                            ...guideColor,
-                            transform: `${translateName}(${pos * zoom}px)`,
-                        }}
-                    ></div>
-                );
+                return (<div className={prefix("guide", type)}
+                    ref={refs(this, "guideElements", i)}
+                    key={i}
+                    data-index={i}
+                    data-pos={pos}
+                    style={{
+                        ...guideColor,
+                        transform: `${translateName}(${pos * zoom}px) translateZ(0px)`,
+                    }}></div>);
             });
         }
         return;
@@ -145,41 +135,61 @@ export default class Guides
     public componentDidMount() {
         this.gesto = new Gesto(this.manager.getElement(), {
             container: document.body,
-        })
-            .on("dragStart", (e) => {
-                const inputEvent = e.inputEvent;
-                const target = inputEvent.target;
-                const datas = e.datas;
-                const canvasElement = this.ruler.canvasElement;
-                const guidesElement = this.guidesElement;
-                const isHorizontal = this.props.type === "horizontal";
-                const originRect = this.originElement.getBoundingClientRect();
-                const matrix = getDistElementMatrix(this.manager.getElement());
-                const offsetPos = calculateMatrixDist(matrix, [
-                    e.clientX - originRect.left,
-                    e.clientY - originRect.top,
-                ]);
-                offsetPos[0] -= guidesElement.offsetLeft;
-                offsetPos[1] -= guidesElement.offsetTop;
-                offsetPos[isHorizontal ? 1 : 0] +=
-                    this.scrollPos * this.props.zoom!;
+        }).on("dragStart", e => {
+            const {
+                type,
+                zoom,
+                lockGuides,
+            } = this.props;
+
+            if (lockGuides === true) {
+                e.stop();
+                return;
+            }
+            const inputEvent = e.inputEvent;
+            const target = inputEvent.target;
+            const datas = e.datas;
+            const canvasElement = this.ruler.canvasElement;
+            const guidesElement = this.guidesElement;
+            const isHorizontal = type === "horizontal";
+            const originRect = this.originElement.getBoundingClientRect();
+            const matrix = getDistElementMatrix(this.manager.getElement());
+            const offsetPos = calculateMatrixDist(matrix, [
+                e.clientX - originRect.left,
+                e.clientY - originRect.top,
+            ]);
+            offsetPos[0] -= guidesElement.offsetLeft;
+            offsetPos[1] -= guidesElement.offsetTop;
+            offsetPos[isHorizontal ? 1 : 0] += this.scrollPos * zoom!;
 
                 datas.offsetPos = offsetPos;
                 datas.matrix = matrix;
 
-                if (target === canvasElement) {
-                    datas.fromRuler = true;
-                    datas.target = this.adderElement;
-                } else if (hasClass(target, GUIDE)) {
-                    datas.target = target;
-                } else {
+            let isLockAdd = lockGuides && lockGuides.indexOf("add") > -1;
+            let isLockRemove = lockGuides && lockGuides.indexOf("remove") > -1;
+            let isLockChange = lockGuides && lockGuides.indexOf("change") > -1;
+
+            if (target === canvasElement) {
+                if (isLockAdd) {
                     e.stop();
-                    return false;
+                    return;
                 }
-                this.onDragStart(e);
-            })
-            .on("drag", this.onDrag)
-            .on("dragEnd", this.onDragEnd);
+                datas.fromRuler = true;
+                datas.target = this.adderElement;
+                // add
+            } else if (hasClass(target, GUIDE)) {
+                if (isLockRemove && isLockChange) {
+                    e.stop();
+                    return;
+                }
+                datas.target = target;
+                // change
+            } else {
+                e.stop();
+                return false;
+            }
+            this.onDragStart(e);
+        }).on("drag", this.onDrag).on("dragEnd", this.onDragEnd);
         this.setState({ guides: this.props.defaultGuides || [] }); // pass array of guides on mount data to create gridlines or something like that in ui
     }
     public componentWillUnmount() {
@@ -249,7 +259,7 @@ export default class Guides
     }
     private onDragStart = (e: any) => {
         const { datas, inputEvent } = e;
-        const { onDragStart } = this.props;
+        const { onDragStart, lockGuides } = this.props;
 
         addClass(datas.target, DRAGGING);
         this.onDrag(e);
@@ -285,8 +295,8 @@ export default class Guides
     private onDragEnd = (e: OnDragEnd) => {
         const { datas, isDouble, distX, distY } = e;
         const pos = this.movePos(e);
-        const guides = [...this.state.guides];
-        const { onChangeGuides, zoom, displayDragPos, digit } = this.props;
+        let guides = [...this.state.guides];
+        const { onChangeGuides, zoom, displayDragPos, digit, lockGuides } = this.props;
         const guidePos = parseFloat((pos / zoom!).toFixed(digit || 0));
 
         if (displayDragPos) {
@@ -311,42 +321,54 @@ export default class Guides
          */
         if (datas.fromRuler) {
             if (pos >= this.scrollPos && guides.indexOf(guidePos) < 0) {
-                this.setState(
-                    {
-                        guides: [...guides, guidePos],
-                    },
-                    () => {
-                        onChangeGuides!({
-                            guides: [...this.state.guides],
-                            distX,
-                            distY,
-                        });
-                    }
-                );
+                this.setState({
+                    guides: [...guides, guidePos],
+                }, () => {
+                    onChangeGuides!({
+                        guides: [...this.state.guides],
+                        distX,
+                        distY,
+                        isAdd: true,
+                        isRemove: false,
+                        isChange: false,
+                    });
+                });
             }
         } else {
             const index = datas.target.getAttribute("data-index");
+            let isRemove = false;
+            let isChange = false;
+
+            guides = [...guides];
 
             if (isDouble || guidePos < this.scrollPos) {
+                if (lockGuides && (lockGuides === true || lockGuides.indexOf("remove") > -1)) {
+                    return;
+                }
                 guides.splice(index, 1);
+                isRemove = true;
             } else if (guides.indexOf(guidePos) > -1) {
                 return;
             } else {
-                guides[index] = guidePos;
-            }
-            this.setState(
-                {
-                    guides: [...guides],
-                },
-                () => {
-                    const nextGuides = [...this.state.guides];
-                    onChangeGuides!({
-                        distX,
-                        distY,
-                        guides: nextGuides,
-                    });
+                if (lockGuides && (lockGuides === true || lockGuides.indexOf("change") > -1)) {
+                    return;
                 }
-            );
+                guides[index] = guidePos;
+                isChange = true;
+            }
+            this.setState({
+                guides,
+            }, () => {
+                const nextGuides = [...this.state.guides];
+                onChangeGuides!({
+                    distX,
+                    distY,
+                    guides: nextGuides,
+                    isAdd: false,
+                    isChange,
+                    isRemove,
+                });
+            });
         }
     };
     private movePos(e: any) {
