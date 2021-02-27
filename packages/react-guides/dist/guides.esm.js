@@ -4,7 +4,7 @@ name: @scala-universal/react-guides
 license: MIT
 author: Daybrush
 repository: https://github.com/daybrush/guides/blob/master/packages/react-guides
-version: 0.12.1
+version: 0.13.1
 */
 import { createElement, PureComponent } from 'react';
 import Ruler, { PROPERTIES as PROPERTIES$1 } from '@scena/react-ruler';
@@ -105,7 +105,9 @@ function (_super) {
     _this.onDragStart = function (e) {
       var datas = e.datas,
           inputEvent = e.inputEvent;
-      var onDragStart = _this.props.onDragStart;
+      var _a = _this.props,
+          onDragStart = _a.onDragStart,
+          lockGuides = _a.lockGuides;
       addClass(datas.target, DRAGGING);
 
       _this.onDrag(e);
@@ -155,7 +157,8 @@ function (_super) {
           onChangeGuides = _a.onChangeGuides,
           zoom = _a.zoom,
           displayDragPos = _a.displayDragPos,
-          digit = _a.digit;
+          digit = _a.digit,
+          lockGuides = _a.lockGuides;
       var guidePos = parseFloat((pos / zoom).toFixed(digit || 0));
 
       if (displayDragPos) {
@@ -189,30 +192,49 @@ function (_super) {
             onChangeGuides({
               guides: _this.state.guides.slice(),
               distX: distX,
-              distY: distY
+              distY: distY,
+              isAdd: true,
+              isRemove: false,
+              isChange: false
             });
           });
         }
       } else {
         var index = datas.target.getAttribute("data-index");
+        var isRemove_1 = false;
+        var isChange_1 = false;
+        guides = guides.slice();
 
         if (isDouble || guidePos < _this.scrollPos) {
+          if (lockGuides && (lockGuides === true || lockGuides.indexOf("remove") > -1)) {
+            return;
+          }
+
           guides.splice(index, 1);
+          isRemove_1 = true;
         } else if (guides.indexOf(guidePos) > -1) {
           return;
         } else {
+          if (lockGuides && (lockGuides === true || lockGuides.indexOf("change") > -1)) {
+            return;
+          }
+
           guides[index] = guidePos;
+          isChange_1 = true;
         }
 
         _this.setState({
-          guides: guides.slice()
+          guides: guides
         }, function () {
           var nextGuides = _this.state.guides.slice();
 
           onChangeGuides({
             distX: distX,
             distY: distY,
-            guides: nextGuides
+            guides: nextGuides,
+            isAdd: false,
+            isChange: isChange_1,
+            isRemove: isRemove_1
           });
         });
       }
@@ -300,7 +322,7 @@ function (_super) {
           "data-index": i,
           "data-pos": pos,
           style: __assign({}, guideColor, {
-            transform: translateName + "(" + pos * zoom + "px)"
+            transform: translateName + "(" + pos * zoom + "px) translateZ(0px)"
           })
         });
       });
@@ -315,12 +337,22 @@ function (_super) {
     this.gesto = new Gesto(this.manager.getElement(), {
       container: document.body
     }).on("dragStart", function (e) {
+      var _a = _this.props,
+          type = _a.type,
+          zoom = _a.zoom,
+          lockGuides = _a.lockGuides;
+
+      if (lockGuides === true) {
+        e.stop();
+        return;
+      }
+
       var inputEvent = e.inputEvent;
       var target = inputEvent.target;
       var datas = e.datas;
       var canvasElement = _this.ruler.canvasElement;
       var guidesElement = _this.guidesElement;
-      var isHorizontal = _this.props.type === "horizontal";
+      var isHorizontal = type === "horizontal";
 
       var originRect = _this.originElement.getBoundingClientRect();
 
@@ -328,15 +360,28 @@ function (_super) {
       var offsetPos = calculateMatrixDist(matrix, [e.clientX - originRect.left, e.clientY - originRect.top]);
       offsetPos[0] -= guidesElement.offsetLeft;
       offsetPos[1] -= guidesElement.offsetTop;
-      offsetPos[isHorizontal ? 1 : 0] += _this.scrollPos * _this.props.zoom;
+      offsetPos[isHorizontal ? 1 : 0] += _this.scrollPos * zoom;
       datas.offsetPos = offsetPos;
       datas.matrix = matrix;
+      var isLockAdd = lockGuides && lockGuides.indexOf("add") > -1;
+      var isLockRemove = lockGuides && lockGuides.indexOf("remove") > -1;
+      var isLockChange = lockGuides && lockGuides.indexOf("change") > -1;
 
       if (target === canvasElement) {
+        if (isLockAdd) {
+          e.stop();
+          return;
+        }
+
         datas.fromRuler = true;
-        datas.target = _this.adderElement;
+        datas.target = _this.adderElement; // add
       } else if (hasClass(target, GUIDE)) {
-        datas.target = target;
+        if (isLockRemove && isLockChange) {
+          e.stop();
+          return;
+        }
+
+        datas.target = target; // change
       } else {
         e.stop();
         return false;
@@ -479,14 +524,11 @@ function (_super) {
     defaultGuides: [],
     digit: 0,
     displayDragPos: false,
+    guidesColor: "#8f8f8f",
     dragPosFormat: function (v) {
       return v;
     },
-    guidesColor: "#8f8f8f",
-    onChangeGuides: function () {},
-    onDrag: function () {},
-    onDragEnd: function () {},
-    onDragStart: function () {},
+    lockGuides: false,
     showGuides: true,
     snaps: [],
     snapThreshold: 5,
