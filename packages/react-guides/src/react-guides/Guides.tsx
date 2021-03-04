@@ -1,40 +1,36 @@
-    import * as React from "react";
+import * as React from "react";
 import Ruler, { PROPERTIES as RULER_PROPERTIES, RulerProps } from "@scena/react-ruler";
 import { ref, refs } from "framework-utils";
 import Gesto, { OnDragEnd } from "gesto";
 import styled, { StyledElement } from "react-css-styled";
-import {
-    GUIDES,
-    GUIDE,
-    DRAGGING,
-    ADDER,
-    DISPLAY_DRAG,
-    GUIDES_CSS,
-} from "./consts";
+import { GUIDES, GUIDE, DRAGGING, ADDER, DISPLAY_DRAG, GUIDES_CSS } from "./consts";
 import { prefix } from "./utils";
 import { hasClass, addClass, removeClass } from "@daybrush/utils";
-import { GuidesState, GuidesProps, GuidesInterface } from "./types";
+import { GuidesState, GuidesProps, GuidesInterface, BorderStyle } from "./types";
 import { getDistElementMatrix, calculateMatrixDist } from "css-to-mat";
 
 const GuidesElement = styled("div", GUIDES_CSS);
 
-export default class Guides
-    extends React.PureComponent<GuidesProps, GuidesState>
-    implements GuidesInterface {
+export default class Guides extends React.PureComponent<GuidesProps, GuidesState> implements GuidesInterface {
     public static defaultProps: GuidesProps = {
         className: "",
-        defaultGuides: [],
-        digit: 0,
-        displayDragPos: false,
-        guidesColor: "#8f8f8f",
-        dragPosFormat: v => v,
-        lockGuides: false,
-        showGuides: true,
-        snaps: [],
-        snapThreshold: 5,
-        style: { width: "100%", height: "100%" },
         type: "horizontal",
         zoom: 1,
+        style: { width: "100%", height: "100%" },
+        snapThreshold: 5,
+        snaps: [],
+        digit: 0,
+        onChangeGuides: () => { },
+        onDragStart: () => { },
+        onDrag: () => { },
+        onDragEnd: () => { },
+        displayDragPos: false,
+        dragPosFormat: v => v,
+        defaultGuides: [],
+        guidesStyle: 'dashed',
+        guidesColor: '#8f8f8f',
+        lockGuides: false,
+        showGuides: true,
     };
     public state: GuidesState = {
         guides: [],
@@ -52,70 +48,67 @@ export default class Guides
     public render() {
         const {
             className,
-            cspNonce,
-            displayDragPos,
-            rulerStyle,
-            style,
+            guidesColor,
             type,
             zoom,
+            style,
+            rulerStyle,
+            displayDragPos,
+            cspNonce,
         } = this.props as Required<GuidesProps>;
         const props = this.props;
         const translateName = this.getTranslateName();
 
+
         const rulerProps: RulerProps = {};
 
-        RULER_PROPERTIES.forEach((name) => {
+        RULER_PROPERTIES.forEach(name => {
             if (name === "style") {
                 return;
             }
             (rulerProps as any)[name] = props[name];
         });
-        const guideColor =
-            type === "horizontal"
-                ? { borderTop: `1px dashed ${this.props.guidesColor}` }
-                : { borderLeft: `1px dashed ${this.props.guidesColor}` };
-        return (
-            <GuidesElement
-                ref={ref(this, "manager")}
-                cspNonce={cspNonce}
-                className={`${prefix("manager", type)} ${className}`}
-                style={style}
-            >
-                <div
-                    className={prefix("guide-origin")}
-                    ref={ref(this, "originElement")}
-                ></div>
-                <Ruler
-                    ref={ref(this, "ruler")}
-                    style={rulerStyle}
-                    {...rulerProps}
-                />
-                <div
-                    className={GUIDES}
-                    ref={ref(this, "guidesElement")}
-                    style={{
-                        transform: `${translateName}(${
-                            -this.scrollPos * zoom
-                        }px)`,
-                    }}
-                >
-                    {displayDragPos && (
-                        <div
-                            className={DISPLAY_DRAG}
-                            ref={ref(this, "displayElement")}
-                            style={{ color: this.props.guidesColor }}
-                        />
-                    )}
-                    <div className={ADDER} ref={ref(this, "adderElement")} style={{...guideColor}} />
-                    {this.renderGuides({ guideColor })}
-                </div>
-            </GuidesElement>
-        );
+
+        const { draggingGuideStyle, staticGuideStyle } = this.getGuideColorStyle(type, guidesColor);
+
+        return <GuidesElement
+            ref={ref(this, "manager")}
+            cspNonce={cspNonce}
+            className={`${prefix("manager", type)} ${className}`}
+            style={style}
+        >
+            <div className={prefix("guide-origin")} ref={ref(this, "originElement")}></div>
+            <Ruler
+                ref={ref(this, "ruler")}
+                style={rulerStyle}
+                {...rulerProps}
+            />
+            <div className={GUIDES} ref={ref(this, "guidesElement")} style={{
+                transform: `${translateName}(${-this.scrollPos * zoom}px)`,
+            }}>
+                {displayDragPos && <div className={DISPLAY_DRAG} ref={ref(this, "displayElement")}  style={{ color: this.props.guidesColor }} />}
+                <div className={ADDER} ref={ref(this, "adderElement")} style={draggingGuideStyle} />
+                {this.renderGuides(staticGuideStyle)}
+            </div>
+        </GuidesElement>;
     }
-    public renderGuides({ guideColor }: { [key: string]: React.CSSProperties }) {
-        const { showGuides, type, zoom } = this.props as Required<GuidesProps>;
+
+
+    private getGuideColorStyle(type: string, guidesColor: string) {
+        const guideColorStyle = (guidesStyle: BorderStyle): React.CSSProperties => type === "horizontal"
+            ? { borderTop: `1px ${guidesStyle} ${guidesColor}` }
+            : { borderLeft: `1px ${guidesStyle} ${guidesColor}` };
+
+        const draggingGuideStyle: React.CSSProperties = { ...guideColorStyle("solid") };
+        const staticGuideStyle: React.CSSProperties = { ...guideColorStyle(this.props.guidesStyle) };
+        return { draggingGuideStyle, staticGuideStyle };
+    }
+
+    public renderGuides(staticGuideStyle: React.CSSProperties) {
+        const { type, zoom, showGuides } = this.props as Required<GuidesProps>;
         const translateName = this.getTranslateName();
-        const guides = [...this.state.guides];
+        const guides = this.state.guides;
+
         this.guideElements = [];
         if (showGuides) {
             return guides.map((pos, i) => {
@@ -125,7 +118,7 @@ export default class Guides
                     data-index={i}
                     data-pos={pos}
                     style={{
-                        ...guideColor,
+                        ...staticGuideStyle,
                         transform: `${translateName}(${pos * zoom}px) translateZ(0px)`,
                     }}></div>);
             });
@@ -162,8 +155,8 @@ export default class Guides
             offsetPos[1] -= guidesElement.offsetTop;
             offsetPos[isHorizontal ? 1 : 0] += this.scrollPos * zoom!;
 
-                datas.offsetPos = offsetPos;
-                datas.matrix = matrix;
+            datas.offsetPos = offsetPos;
+            datas.matrix = matrix;
 
             let isLockAdd = lockGuides && lockGuides.indexOf("add") > -1;
             let isLockRemove = lockGuides && lockGuides.indexOf("remove") > -1;
@@ -208,7 +201,7 @@ export default class Guides
      */
     public loadGuides(guides: number[]) {
         this.setState({
-            guides: [...guides],
+            guides,
         });
     }
     /**
@@ -217,7 +210,7 @@ export default class Guides
      * @instance
      */
     public getGuides(): number[] {
-        return [...this.state.guides];
+        return this.state.guides;
     }
     /**
      * Scroll the positions of the guidelines opposite the ruler.
@@ -229,11 +222,9 @@ export default class Guides
         const guidesElement = this.guidesElement;
 
         this.scrollPos = pos;
-        guidesElement.style.transform = `${this.getTranslateName()}(${
-            -pos * zoom
-        }px)`;
+        guidesElement.style.transform = `${this.getTranslateName()}(${-pos * zoom}px)`;
 
-        const guides = [...this.state.guides];
+        const guides = this.state.guides;
         this.guideElements.forEach((el, i) => {
             if (!el) {
                 return;
@@ -276,7 +267,7 @@ export default class Guides
         });
         inputEvent.stopPropagation();
         inputEvent.preventDefault();
-    };
+    }
     private onDrag = (e: any) => {
         const nextPos = this.movePos(e);
 
@@ -291,11 +282,11 @@ export default class Guides
             dragElement: e.datas.target,
         });
         return nextPos;
-    };
+    }
     private onDragEnd = (e: OnDragEnd) => {
         const { datas, isDouble, distX, distY } = e;
         const pos = this.movePos(e);
-        let guides = [...this.state.guides];
+        let guides = this.state.guides;
         const { onChangeGuides, zoom, displayDragPos, digit, lockGuides } = this.props;
         const guidePos = parseFloat((pos / zoom!).toFixed(digit || 0));
 
@@ -314,18 +305,18 @@ export default class Guides
             dragElement: datas.target,
         });
         /**
-         * The `changeGuides` event occurs when the guideline is added / removed / changed.
-         * @memberof Guides
-         * @event changeGuides
-         * @param {OnChangeGuides} - Parameters for the changeGuides event
-         */
+        * The `changeGuides` event occurs when the guideline is added / removed / changed.
+        * @memberof Guides
+        * @event changeGuides
+        * @param {OnChangeGuides} - Parameters for the changeGuides event
+        */
         if (datas.fromRuler) {
             if (pos >= this.scrollPos && guides.indexOf(guidePos) < 0) {
                 this.setState({
                     guides: [...guides, guidePos],
                 }, () => {
                     onChangeGuides!({
-                        guides: [...this.state.guides],
+                        guides: this.state.guides,
                         distX,
                         distY,
                         isAdd: true,
@@ -359,7 +350,7 @@ export default class Guides
             this.setState({
                 guides,
             }, () => {
-                const nextGuides = [...this.state.guides];
+                const nextGuides = this.state.guides;
                 onChangeGuides!({
                     distX,
                     distY,
@@ -370,19 +361,16 @@ export default class Guides
                 });
             });
         }
-    };
+    }
     private movePos(e: any) {
         const { datas, distX, distY } = e;
         const props = this.props;
         const {
-            type,
-            zoom,
-            snaps,
-            snapThreshold,
+            type, zoom, snaps, snapThreshold,
             displayDragPos,
             digit,
         } = props;
-        const dragPosFormat = props.dragPosFormat || ((v) => v);
+        const dragPosFormat = props.dragPosFormat || (v => v);
         const isHorizontal = type === "horizontal";
         const matrixPos = calculateMatrixDist(datas.matrix, [distX, distY]);
         const offsetPos = datas.offsetPos;
@@ -394,25 +382,24 @@ export default class Guides
             return Math.abs(guidePos - a) - Math.abs(guidePos - b);
         });
 
-        if (
-            guideSnaps.length &&
-            Math.abs(guideSnaps[0] * zoom! - nextPos) < snapThreshold!
-        ) {
+        if (guideSnaps.length && Math.abs(guideSnaps[0] * zoom! - nextPos) < snapThreshold!) {
             guidePos = guideSnaps[0];
             nextPos = guidePos * zoom!;
         }
         if (displayDragPos) {
-            const displayPos =
-                type === "horizontal" ? [offsetX, nextPos] : [nextPos, offsetY];
-            this.displayElement.style.cssText += `display: block;transform: translate(-50%, -50%) translate(${displayPos
-                .map((v) => `${v}px`)
-                .join(", ")})`;
+            const displayPos = type === "horizontal"
+                ? [offsetX, nextPos]
+                : [nextPos, offsetY];
+            this.displayElement.style.cssText += `display: block;transform: translate(-50%, -50%) translate(${
+                displayPos.map(v => `${v}px`).join(", ")
+                })`;
             this.displayElement.innerHTML = `${dragPosFormat!(guidePos)}`;
         }
         datas.target.setAttribute("data-pos", guidePos);
         datas.target.style.transform = `${this.getTranslateName()}(${nextPos}px)`;
 
         return nextPos;
+
     }
     private getTranslateName() {
         return this.props.type === "horizontal" ? "translateY" : "translateX";

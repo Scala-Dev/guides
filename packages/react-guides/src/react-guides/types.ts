@@ -29,6 +29,8 @@ export interface GuidesState {
  */
 export interface GuidesOptions extends RulerProps {
     className?: string;
+    guidesColor: string;
+    guidesStyle: BorderStyle;
     rulerStyle?: IObject<any>;
     snapThreshold?: number;
     snaps?: number[];
@@ -40,6 +42,8 @@ export interface GuidesOptions extends RulerProps {
     lockGuides?: boolean | Array<"add" | "change" | "remove">;
     digit?: number;
 }
+
+export type BorderStyle = 'solid' | 'dotted' | 'dashed';
 
 /**
  * @typedef
@@ -55,7 +59,6 @@ export interface GuideOptions extends GuidesOptions {
  * @extends Guides.GuidesOptions
  */
 export interface GuidesProps extends GuidesOptions {
-    guidesColor: string;
     onChangeGuides?: (e: OnChangeGuides) => any;
     onDragStart?: (e: OnDragStart) => any;
     onDrag?: (e: OnDrag) => any;

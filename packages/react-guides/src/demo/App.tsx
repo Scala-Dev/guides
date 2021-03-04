@@ -5,12 +5,30 @@ import "./App.css";
 import Guides from "../react-guides/Guides";
 import { ref } from "framework-utils";
 import Gesto from "gesto";
+import Select from 'react-select';
+import { SketchPicker } from 'react-color'
+import { BorderStyle } from "../react-guides/types";
 
+interface State {
+    guideColor: string;
+    guideStyle: BorderStyle;
+    showColorPicker: boolean;
+    unit: number,
+    zoom: number,
+}
+
+const guideStyleOptions = [
+    { value: 'dashed', label: 'Dashed' },
+    { value: 'dotted', label: 'Dotted' },
+    { value: 'solid', label: 'Solid' },
+];
 export default class App extends Component<{}> {
-    public state = {
+    public state: State = {
         zoom: 72,
         unit: 1,
-        lockGuides: false,
+        guideColor: '#f33',
+        guideStyle: 'solid',
+        showColorPicker: false,
     };
     private scene: Scene = new Scene();
     // private editor!: Editor;
@@ -24,9 +42,10 @@ export default class App extends Component<{}> {
             <div className="ruler horizontal" style={{ }}>
                 <Guides ref={ref(this, "guides1")}
                     type="horizontal"
+                    guidesColor={this.state.guideColor}
+                    guidesStyle={this.state.guideStyle}
                     zoom={this.state.zoom}
                     unit={this.state.unit}
-                    lockGuides={this.state.lockGuides}
                     snapThreshold={5}
                     textFormat={v => `${v}in`}
                     snaps={[1, 2, 3]}
@@ -50,8 +69,9 @@ export default class App extends Component<{}> {
             </div>
             <div className="ruler vertical">
                 <Guides ref={ref(this, "guides2")}
+                    guidesColor={this.state.guideColor}
+                    guidesStyle={this.state.guideStyle}
                     type="vertical"
-                    lockGuides={this.state.lockGuides}
                     zoom={this.state.zoom}
                     unit={this.state.unit}
                     snaps={[100, 200, 400]}
@@ -72,6 +92,12 @@ export default class App extends Component<{}> {
                 />
             </div>
             <div className="container">
+                {this.state.showColorPicker && <div style={{ position: 'absolute', marginLeft: '30%' }}>
+                        <SketchPicker 
+                            color={this.state.guideColor} 
+                            onChangeComplete={(color) => this.setState({ guideColor: color.hex}) }/>
+                            </div>}
+
                 <img src="https://daybrush.com/guides/images/guides.png" width="200" alt="guides" />
                 <p className="dragit">Drag Screen & Rulers!</p>
                 <p><button onClick={() => {
@@ -85,6 +111,20 @@ export default class App extends Component<{}> {
                         unit: this.state.unit / 2,
                     });
                 }}>+</button></p>
+
+                <div className="buttons">
+                    <button onClick={() => this.setState({ showColorPicker: !this.state.showColorPicker })}>Change Guides Color</button>
+                </div>
+
+                <div style={{ width: 200, display: 'block', marginLeft: 'auto', marginRight: 'auto', marginTop: 5, marginBottom: 2, fontSize: 12 }} >
+                    <Select
+                        value={this.state.guideStyle}
+                        placeholder='Change Guides Style'
+                        onChange={({ value }) => this.setState({ guideStyle: value })}
+                        options={guideStyleOptions}
+                        />
+                </div>
+
                 <p className="badges">
                     <a href="https://www.npmjs.com/package/svelte-guides" target="_blank">
                         <img src="https://img.shields.io/npm/v/svelte-guides.svg?style=flat-square&color=007acc&label=version"
@@ -112,7 +152,6 @@ export default class App extends Component<{}> {
                 <p className="description">A React Guides component that can draw ruler and manage guidelines.</p>
                 <div className="buttons">
                     <a href="https://github.com/daybrush/guides/tree/master/packages/svelte-guides" target="_blank">Download</a>
-                    <a onClick={() => this.setState({ lockGuides: !this.state.lockGuides })}>{this.state.lockGuides ? 'Unlock ' : 'Lock '}Guides</a>
                 </div>
             </div>
         </div>
