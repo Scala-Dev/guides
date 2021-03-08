@@ -13,6 +13,7 @@ interface State {
     guideColor: string;
     guideStyle: BorderStyle;
     showColorPicker: boolean;
+    lockGuides: boolean;
     unit: number,
     zoom: number,
 }
@@ -29,6 +30,8 @@ export default class App extends Component<{}> {
         guideColor: '#f33',
         guideStyle: 'solid',
         showColorPicker: false,
+        lockGuides: false,
+
     };
     private scene: Scene = new Scene();
     // private editor!: Editor;
@@ -37,6 +40,7 @@ export default class App extends Component<{}> {
     private scrollX: number = 0;
     private scrollY: number = 0;
     public render() {
+        const lockText = this.state.lockGuides ? 'unlock' : 'lock';
         return (<div className="page">
             <div className="box" onClick={this.restore}></div>
             <div className="ruler horizontal" style={{ }}>
@@ -50,6 +54,7 @@ export default class App extends Component<{}> {
                     textFormat={v => `${v}in`}
                     snaps={[1, 2, 3]}
                     digit={1}
+                    lockGuides={this.state.lockGuides}
                     style={{  height: "30px" }}
                     rulerStyle={{ left: "30px", width: "calc(100% - 30px)", height: "100%" }}
                     displayDragPos={true}
@@ -75,6 +80,7 @@ export default class App extends Component<{}> {
                     zoom={this.state.zoom}
                     unit={this.state.unit}
                     snaps={[100, 200, 400]}
+                    lockGuides={this.state.lockGuides}
                     rulerStyle={{ top: "30px", height: "calc(100% - 30px)", width: "100%" }}
                     displayDragPos={true}
                     onChangeGuides={({ guides }) => {
@@ -111,6 +117,12 @@ export default class App extends Component<{}> {
                         unit: this.state.unit / 2,
                     });
                 }}>+</button></p>
+
+                <div className="buttons">
+                    <button onClick={() => this.setState({ lockGuides: !this.state.lockGuides })}>
+                        <i className={`fa fa-${lockText}`}></i> 
+                        {" " + lockText[0].toUpperCase() + lockText.slice(1)} Guides</button>
+                </div>
 
                 <div className="buttons">
                     <button onClick={() => this.setState({ showColorPicker: !this.state.showColorPicker })}>Change Guides Color</button>
