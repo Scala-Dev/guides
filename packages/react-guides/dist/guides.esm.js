@@ -4,7 +4,7 @@ name: @scala-universal/react-guides
 license: MIT
 author: Daybrush
 repository: https://github.com/daybrush/guides/blob/master/packages/react-guides
-version: 0.13.1
+version: 0.13.3
 */
 import { createElement, PureComponent } from 'react';
 import Ruler, { PROPERTIES as PROPERTIES$1 } from '@scena/react-ruler';
@@ -151,8 +151,7 @@ function (_super) {
 
       var pos = _this.movePos(e);
 
-      var guides = _this.state.guides.slice();
-
+      var guides = _this.state.guides;
       var _a = _this.props,
           onChangeGuides = _a.onChangeGuides,
           zoom = _a.zoom,
@@ -177,11 +176,11 @@ function (_super) {
         dragElement: datas.target
       }));
       /**
-       * The `changeGuides` event occurs when the guideline is added / removed / changed.
-       * @memberof Guides
-       * @event changeGuides
-       * @param {OnChangeGuides} - Parameters for the changeGuides event
-       */
+      * The `changeGuides` event occurs when the guideline is added / removed / changed.
+      * @memberof Guides
+      * @event changeGuides
+      * @param {OnChangeGuides} - Parameters for the changeGuides event
+      */
 
 
       if (datas.fromRuler) {
@@ -190,7 +189,7 @@ function (_super) {
             guides: guides.concat([guidePos])
           }, function () {
             onChangeGuides({
-              guides: _this.state.guides.slice(),
+              guides: _this.state.guides,
               distX: distX,
               distY: distY,
               isAdd: true,
@@ -226,8 +225,7 @@ function (_super) {
         _this.setState({
           guides: guides
         }, function () {
-          var nextGuides = _this.state.guides.slice();
-
+          var nextGuides = _this.state.guides;
           onChangeGuides({
             distX: distX,
             distY: distY,
@@ -248,12 +246,13 @@ function (_super) {
   __proto.render = function () {
     var _a = this.props,
         className = _a.className,
-        cspNonce = _a.cspNonce,
-        displayDragPos = _a.displayDragPos,
-        rulerStyle = _a.rulerStyle,
-        style = _a.style,
+        guidesColor = _a.guidesColor,
         type = _a.type,
-        zoom = _a.zoom;
+        zoom = _a.zoom,
+        style = _a.style,
+        rulerStyle = _a.rulerStyle,
+        displayDragPos = _a.displayDragPos,
+        cspNonce = _a.cspNonce;
     var props = this.props;
     var translateName = this.getTranslateName();
     var rulerProps = {};
@@ -264,11 +263,11 @@ function (_super) {
 
       rulerProps[name] = props[name];
     });
-    var guideColor = type === "horizontal" ? {
-      borderTop: "1px dashed " + this.props.guidesColor
-    } : {
-      borderLeft: "1px dashed " + this.props.guidesColor
-    };
+
+    var _b = this.getGuideColorStyle(type, guidesColor),
+        draggingGuideStyle = _b.draggingGuideStyle,
+        staticGuideStyle = _b.staticGuideStyle;
+
     return createElement(GuidesElement, {
       ref: ref(this, "manager"),
       cspNonce: cspNonce,
@@ -295,22 +294,38 @@ function (_super) {
     }), createElement("div", {
       className: ADDER,
       ref: ref(this, "adderElement"),
-      style: __assign({}, guideColor)
-    }), this.renderGuides({
-      guideColor: guideColor
-    })));
+      style: draggingGuideStyle
+    }), this.renderGuides(staticGuideStyle)));
   };
 
-  __proto.renderGuides = function (_a) {
+  __proto.getGuideColorStyle = function (type, guidesColor) {
+    var guideColorStyle = function (guidesStyle) {
+      return type === "horizontal" ? {
+        borderTop: "1px " + guidesStyle + " " + guidesColor
+      } : {
+        borderLeft: "1px " + guidesStyle + " " + guidesColor
+      };
+    };
+
+    var draggingGuideStyle = __assign({}, guideColorStyle("solid"));
+
+    var staticGuideStyle = __assign({}, guideColorStyle(this.props.guidesStyle));
+
+    return {
+      draggingGuideStyle: draggingGuideStyle,
+      staticGuideStyle: staticGuideStyle
+    };
+  };
+
+  __proto.renderGuides = function (staticGuideStyle) {
     var _this = this;
 
-    var guideColor = _a.guideColor;
-    var _b = this.props,
-        showGuides = _b.showGuides,
-        type = _b.type,
-        zoom = _b.zoom;
+    var _a = this.props,
+        type = _a.type,
+        zoom = _a.zoom,
+        showGuides = _a.showGuides;
     var translateName = this.getTranslateName();
-    var guides = this.state.guides.slice();
+    var guides = this.state.guides;
     this.guideElements = [];
 
     if (showGuides) {
@@ -321,7 +336,7 @@ function (_super) {
           key: i,
           "data-index": i,
           "data-pos": pos,
-          style: __assign({}, guideColor, {
+          style: __assign({}, staticGuideStyle, {
             transform: translateName + "(" + pos * zoom + "px) translateZ(0px)"
           })
         });
@@ -415,7 +430,7 @@ function (_super) {
 
   __proto.loadGuides = function (guides) {
     this.setState({
-      guides: guides.slice()
+      guides: guides
     });
   };
   /**
@@ -426,7 +441,7 @@ function (_super) {
 
 
   __proto.getGuides = function () {
-    return this.state.guides.slice();
+    return this.state.guides;
   };
   /**
    * Scroll the positions of the guidelines opposite the ruler.
@@ -440,7 +455,7 @@ function (_super) {
     var guidesElement = this.guidesElement;
     this.scrollPos = pos;
     guidesElement.style.transform = this.getTranslateName() + "(" + -pos * zoom + "px)";
-    var guides = this.state.guides.slice();
+    var guides = this.state.guides;
     this.guideElements.forEach(function (el, i) {
       if (!el) {
         return;
@@ -521,23 +536,28 @@ function (_super) {
 
   Guides.defaultProps = {
     className: "",
-    defaultGuides: [],
-    digit: 0,
-    displayDragPos: false,
-    guidesColor: "#8f8f8f",
-    dragPosFormat: function (v) {
-      return v;
-    },
-    lockGuides: false,
-    showGuides: true,
-    snaps: [],
-    snapThreshold: 5,
+    type: "horizontal",
+    zoom: 1,
     style: {
       width: "100%",
       height: "100%"
     },
-    type: "horizontal",
-    zoom: 1
+    snapThreshold: 5,
+    snaps: [],
+    digit: 0,
+    onChangeGuides: function () {},
+    onDragStart: function () {},
+    onDrag: function () {},
+    onDragEnd: function () {},
+    displayDragPos: false,
+    dragPosFormat: function (v) {
+      return v;
+    },
+    defaultGuides: [],
+    guidesStyle: 'dashed',
+    guidesColor: '#8f8f8f',
+    lockGuides: false,
+    showGuides: true
   };
   return Guides;
 }(PureComponent);
