@@ -31,6 +31,7 @@ export default class Guides extends React.PureComponent<GuidesProps, GuidesState
         guidesColor: '#8f8f8f',
         lockGuides: false,
         showGuides: true,
+        deleteOnDblclick: true,
     };
     public state: GuidesState = {
         guides: [],
@@ -331,8 +332,9 @@ export default class Guides extends React.PureComponent<GuidesProps, GuidesState
             let isChange = false;
 
             guides = [...guides];
+            const deleteOnDblclick = this.props.deleteOnDblclick && isDouble;
 
-            if (isDouble || guidePos < this.scrollPos) {
+            if (deleteOnDblclick || guidePos < this.scrollPos) {
                 if (lockGuides && (lockGuides === true || lockGuides.indexOf("remove") > -1)) {
                     return;
                 }
