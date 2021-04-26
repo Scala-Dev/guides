@@ -4,7 +4,7 @@ name: @scala-universal/react-guides
 license: MIT
 author: Daybrush
 repository: https://github.com/daybrush/guides/blob/master/packages/react-guides
-version: 0.13.3
+version: 0.13.4
 */
 import { createElement, PureComponent } from 'react';
 import Ruler, { PROPERTIES as PROPERTIES$1 } from '@scena/react-ruler';
@@ -203,8 +203,9 @@ function (_super) {
         var isRemove_1 = false;
         var isChange_1 = false;
         guides = guides.slice();
+        var deleteOnDblclick = _this.props.deleteOnDblclick && isDouble;
 
-        if (isDouble || guidePos < _this.scrollPos) {
+        if (deleteOnDblclick || guidePos < _this.scrollPos) {
           if (lockGuides && (lockGuides === true || lockGuides.indexOf("remove") > -1)) {
             return;
           }
@@ -557,7 +558,8 @@ function (_super) {
     guidesStyle: 'dashed',
     guidesColor: '#8f8f8f',
     lockGuides: false,
-    showGuides: true
+    showGuides: true,
+    deleteOnDblclick: true
   };
   return Guides;
 }(PureComponent);
