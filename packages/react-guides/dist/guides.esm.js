@@ -4,15 +4,15 @@ name: @scala-universal/react-guides
 license: MIT
 author: Daybrush
 repository: https://github.com/daybrush/guides/blob/master/packages/react-guides
-version: 0.13.4
+version: 0.13.5
 */
-import { createElement, PureComponent } from 'react';
+import { addClass, removeClass, hasClass } from '@daybrush/utils';
 import Ruler, { PROPERTIES as PROPERTIES$1 } from '@scena/react-ruler';
+import { getDistElementMatrix, calculateMatrixDist } from 'css-to-mat';
 import { prefixNames, prefixCSS, ref, refs } from 'framework-utils';
 import Gesto from 'gesto';
+import { createElement, PureComponent } from 'react';
 import styled from 'react-css-styled';
-import { addClass, removeClass, hasClass } from '@daybrush/utils';
-import { getDistElementMatrix, calculateMatrixDist } from 'css-to-mat';
 
 /*! *****************************************************************************
 Copyright (c) Microsoft Corporation. All rights reserved.
@@ -86,7 +86,7 @@ var PROPERTIES = ["className", "rulerStyle", 'snapThreshold', "snaps", "displayD
 var METHODS = ["getGuides", "loadGuides", "scroll", "scrollGuides", "resize"];
 var EVENTS = ["changeGuides", "dragStart", "drag", "dragEnd"];
 
-var GuidesElement = styled("div", GUIDES_CSS);
+var GuidesElement = styled('div', GUIDES_CSS);
 
 var Guides =
 /*#__PURE__*/
@@ -100,33 +100,49 @@ function (_super) {
       guides: []
     };
     _this.scrollPos = 0;
-    _this.guideElements = [];
+    _this.guideElements = []; // DES2-1606, delay create till drg
+
+    _this.isTrackingCreate = false; // tracking beginning and end of create sequence
+
+    _this.canCreate = false; // signal if mouse out of ruler area
+
+    _this.created = false; // signal if new guide was added
 
     _this.onDragStart = function (e) {
-      var datas = e.datas,
-          inputEvent = e.inputEvent;
-      var _a = _this.props,
-          onDragStart = _a.onDragStart,
-          lockGuides = _a.lockGuides;
-      addClass(datas.target, DRAGGING);
+      var inputEvent = e.inputEvent,
+          datas = e.datas;
+      if (!datas.fromRuler) addClass(datas.target, DRAGGING);else {
+        _this.isTrackingCreate = true; // allow touch create to skip mouseleave logic
 
-      _this.onDrag(e);
-      /**
-       * When the drag starts, the dragStart event is called.
-       * @memberof Guides
-       * @event dragStart
-       * @param {OnDragStart} - Parameters for the dragStart event
-       */
-
-
-      onDragStart(__assign({}, e, {
-        dragElement: datas.target
-      }));
+        if (inputEvent.type === 'touchstart') _this.canCreate = true;
+      }
       inputEvent.stopPropagation();
       inputEvent.preventDefault();
     };
 
+    _this.onMouseLeave = function () {
+      if (_this.isTrackingCreate) _this.canCreate = true;
+    };
+
     _this.onDrag = function (e) {
+      if (e.datas.fromRuler) {
+        if (!_this.canCreate && !_this.created) {
+          // do not create till mouseleave the ruler
+          return;
+        }
+
+        if (_this.canCreate && !_this.created) {
+          // DES2-1606, delay create till drg
+          addClass(e.datas.target, DRAGGING);
+
+          _this.props.onDragStart(__assign({}, e, {
+            dragElement: e.datas.target
+          }));
+
+          _this.created = true;
+        }
+      }
+
       var nextPos = _this.movePos(e);
       /**
        * When dragging, the drag event is called.
@@ -141,6 +157,13 @@ function (_super) {
       }));
 
       return nextPos;
+    };
+
+    _this.cleanupCreate = function () {
+      // DES2-1606, delay create till drg
+      _this.canCreate = false;
+      _this.created = false;
+      _this.isTrackingCreate = false;
     };
 
     _this.onDragEnd = function (e) {
@@ -176,46 +199,64 @@ function (_super) {
         dragElement: datas.target
       }));
       /**
-      * The `changeGuides` event occurs when the guideline is added / removed / changed.
-      * @memberof Guides
-      * @event changeGuides
-      * @param {OnChangeGuides} - Parameters for the changeGuides event
-      */
+       * The `changeGuides` event occurs when the guideline is added / removed / changed.
+       * @memberof Guides
+       * @event changeGuides
+       * @param {OnChangeGuides} - Parameters for the changeGuides event
+       */
 
 
       if (datas.fromRuler) {
-        if (pos >= _this.scrollPos && guides.indexOf(guidePos) < 0) {
-          _this.setState({
-            guides: guides.concat([guidePos])
-          }, function () {
-            onChangeGuides({
-              guides: _this.state.guides,
-              distX: distX,
-              distY: distY,
-              isAdd: true,
-              isRemove: false,
-              isChange: false
+        // DES2-1852, remove position restriction
+        // if (pos >= this.scrollPos && guides.indexOf(guidePos) < 0) {
+        if (guides.indexOf(guidePos) < 0) {
+          // DES2-1606, delay create till drg
+          if (_this.created) {
+            if (guidePos < _this.scrollPos) {
+              // do not create if dragEnd on the ruler
+              _this.cleanupCreate();
+
+              return;
+            }
+
+            _this.setState({
+              guides: guides.concat([guidePos])
+            }, function () {
+              onChangeGuides({
+                distX: distX,
+                distY: distY,
+                guides: _this.state.guides,
+                isAdd: true,
+                isChange: false,
+                isRemove: false
+              });
             });
-          });
+          }
         }
       } else {
-        var index = datas.target.getAttribute("data-index");
+        var index = datas.target.getAttribute('data-index');
         var isRemove_1 = false;
         var isChange_1 = false;
         guides = guides.slice();
         var deleteOnDblclick = _this.props.deleteOnDblclick && isDouble;
 
         if (deleteOnDblclick || guidePos < _this.scrollPos) {
-          if (lockGuides && (lockGuides === true || lockGuides.indexOf("remove") > -1)) {
+          if (lockGuides && (lockGuides === true || lockGuides.indexOf('remove') > -1)) {
+            _this.cleanupCreate();
+
             return;
           }
 
           guides.splice(index, 1);
           isRemove_1 = true;
         } else if (guides.indexOf(guidePos) > -1) {
+          _this.cleanupCreate();
+
           return;
         } else {
-          if (lockGuides && (lockGuides === true || lockGuides.indexOf("change") > -1)) {
+          if (lockGuides && (lockGuides === true || lockGuides.indexOf('change') > -1)) {
+            _this.cleanupCreate();
+
             return;
           }
 
@@ -237,6 +278,8 @@ function (_super) {
           });
         });
       }
+
+      _this.cleanupCreate();
     };
 
     return _this;
@@ -258,7 +301,7 @@ function (_super) {
     var translateName = this.getTranslateName();
     var rulerProps = {};
     PROPERTIES$1.forEach(function (name) {
-      if (name === "style") {
+      if (name === 'style') {
         return;
       }
 
@@ -270,45 +313,45 @@ function (_super) {
         staticGuideStyle = _b.staticGuideStyle;
 
     return createElement(GuidesElement, {
-      ref: ref(this, "manager"),
+      className: prefix('manager', type) + " " + className,
       cspNonce: cspNonce,
-      className: prefix("manager", type) + " " + className,
+      ref: ref(this, 'manager'),
       style: style
     }, createElement("div", {
-      className: prefix("guide-origin"),
-      ref: ref(this, "originElement")
+      className: prefix('guide-origin'),
+      ref: ref(this, 'originElement')
     }), createElement(Ruler, __assign({
-      ref: ref(this, "ruler"),
+      ref: ref(this, 'ruler'),
       style: rulerStyle
     }, rulerProps)), createElement("div", {
       className: GUIDES,
-      ref: ref(this, "guidesElement"),
+      ref: ref(this, 'guidesElement'),
       style: {
         transform: translateName + "(" + -this.scrollPos * zoom + "px)"
       }
     }, displayDragPos && createElement("div", {
       className: DISPLAY_DRAG,
-      ref: ref(this, "displayElement"),
+      ref: ref(this, 'displayElement'),
       style: {
         color: this.props.guidesColor
       }
     }), createElement("div", {
       className: ADDER,
-      ref: ref(this, "adderElement"),
+      ref: ref(this, 'adderElement'),
       style: draggingGuideStyle
     }), this.renderGuides(staticGuideStyle)));
   };
 
   __proto.getGuideColorStyle = function (type, guidesColor) {
     var guideColorStyle = function (guidesStyle) {
-      return type === "horizontal" ? {
+      return type === 'horizontal' ? {
         borderTop: "1px " + guidesStyle + " " + guidesColor
       } : {
         borderLeft: "1px " + guidesStyle + " " + guidesColor
       };
     };
 
-    var draggingGuideStyle = __assign({}, guideColorStyle("solid"));
+    var draggingGuideStyle = __assign({}, guideColorStyle('solid'));
 
     var staticGuideStyle = __assign({}, guideColorStyle(this.props.guidesStyle));
 
@@ -332,11 +375,11 @@ function (_super) {
     if (showGuides) {
       return guides.map(function (pos, i) {
         return createElement("div", {
-          className: prefix("guide", type),
-          ref: refs(_this, "guideElements", i),
-          key: i,
+          className: prefix('guide', type),
           "data-index": i,
           "data-pos": pos,
+          key: i,
+          ref: refs(_this, 'guideElements', i),
           style: __assign({}, staticGuideStyle, {
             transform: translateName + "(" + pos * zoom + "px) translateZ(0px)"
           })
@@ -350,9 +393,10 @@ function (_super) {
   __proto.componentDidMount = function () {
     var _this = this;
 
+    this.manager.getElement().addEventListener('mouseleave', this.onMouseLeave);
     this.gesto = new Gesto(this.manager.getElement(), {
       container: document.body
-    }).on("dragStart", function (e) {
+    }).on('dragStart', function (e) {
       var _a = _this.props,
           type = _a.type,
           zoom = _a.zoom,
@@ -368,7 +412,7 @@ function (_super) {
       var datas = e.datas;
       var canvasElement = _this.ruler.canvasElement;
       var guidesElement = _this.guidesElement;
-      var isHorizontal = type === "horizontal";
+      var isHorizontal = type === 'horizontal';
 
       var originRect = _this.originElement.getBoundingClientRect();
 
@@ -379,9 +423,9 @@ function (_super) {
       offsetPos[isHorizontal ? 1 : 0] += _this.scrollPos * zoom;
       datas.offsetPos = offsetPos;
       datas.matrix = matrix;
-      var isLockAdd = lockGuides && lockGuides.indexOf("add") > -1;
-      var isLockRemove = lockGuides && lockGuides.indexOf("remove") > -1;
-      var isLockChange = lockGuides && lockGuides.indexOf("change") > -1;
+      var isLockAdd = lockGuides && lockGuides.indexOf('add') > -1;
+      var isLockRemove = lockGuides && lockGuides.indexOf('remove') > -1;
+      var isLockChange = lockGuides && lockGuides.indexOf('change') > -1;
 
       if (target === canvasElement) {
         if (isLockAdd) {
@@ -404,13 +448,14 @@ function (_super) {
       }
 
       _this.onDragStart(e);
-    }).on("drag", this.onDrag).on("dragEnd", this.onDragEnd);
+    }).on('drag', this.onDrag).on('dragEnd', this.onDragEnd);
     this.setState({
       guides: this.props.defaultGuides || []
     }); // pass array of guides on mount data to create gridlines or something like that in ui
   };
 
   __proto.componentWillUnmount = function () {
+    this.manager.getElement().removeEventListener('mouseleave', this.onMouseLeave);
     this.gesto.unset();
   };
 
@@ -462,7 +507,7 @@ function (_super) {
         return;
       }
 
-      el.style.display = -pos + guides[i] < 0 ? "none" : "block";
+      el.style.display = -pos + guides[i] < 0 ? 'none' : 'block';
     });
   };
   /**
@@ -502,7 +547,7 @@ function (_super) {
       return v;
     };
 
-    var isHorizontal = type === "horizontal";
+    var isHorizontal = type === 'horizontal';
     var matrixPos = calculateMatrixDist(datas.matrix, [distX, distY]);
     var offsetPos = datas.offsetPos;
     var offsetX = matrixPos[0] + offsetPos[0];
@@ -519,47 +564,47 @@ function (_super) {
     }
 
     if (displayDragPos) {
-      var displayPos = type === "horizontal" ? [offsetX, nextPos] : [nextPos, offsetY];
+      var displayPos = type === 'horizontal' ? [offsetX, nextPos] : [nextPos, offsetY];
       this.displayElement.style.cssText += "display: block;transform: translate(-50%, -50%) translate(" + displayPos.map(function (v) {
         return v + "px";
-      }).join(", ") + ")";
+      }).join(', ') + ")";
       this.displayElement.innerHTML = "" + dragPosFormat(guidePos);
     }
 
-    datas.target.setAttribute("data-pos", guidePos);
+    datas.target.setAttribute('data-pos', guidePos);
     datas.target.style.transform = this.getTranslateName() + "(" + nextPos + "px)";
     return nextPos;
   };
 
   __proto.getTranslateName = function () {
-    return this.props.type === "horizontal" ? "translateY" : "translateX";
+    return this.props.type === 'horizontal' ? 'translateY' : 'translateX';
   };
 
   Guides.defaultProps = {
-    className: "",
-    type: "horizontal",
-    zoom: 1,
-    style: {
-      width: "100%",
-      height: "100%"
-    },
-    snapThreshold: 5,
-    snaps: [],
+    className: '',
+    defaultGuides: [],
+    deleteOnDblclick: true,
     digit: 0,
-    onChangeGuides: function () {},
-    onDragStart: function () {},
-    onDrag: function () {},
-    onDragEnd: function () {},
     displayDragPos: false,
     dragPosFormat: function (v) {
       return v;
     },
-    defaultGuides: [],
-    guidesStyle: 'dashed',
     guidesColor: '#8f8f8f',
+    guidesStyle: 'dashed',
     lockGuides: false,
+    onChangeGuides: function () {},
+    onDrag: function () {},
+    onDragEnd: function () {},
+    onDragStart: function () {},
     showGuides: true,
-    deleteOnDblclick: true
+    snapThreshold: 5,
+    snaps: [],
+    style: {
+      height: '100%',
+      width: '100%'
+    },
+    type: 'horizontal',
+    zoom: 1
   };
   return Guides;
 }(PureComponent);
